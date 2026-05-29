@@ -1,0 +1,190 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@layer base {
+  :root {
+    /* PHILMAC Brand: Navy Blue + Orange */
+    --background: 0 0% 100%;
+    --foreground: 218 72% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 218 72% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 218 72% 12%;
+
+    /* Primary: PHILMAC Navy Blue */
+    --primary: 218 72% 22%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary: PHILMAC Orange */
+    --secondary: 18 90% 54%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 215 20% 93%;
+    --muted-foreground: 218 35% 38%;
+
+    --accent: 18 90% 54%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 215 18% 85%;
+    --input: 215 18% 85%;
+    --ring: 218 72% 22%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 218 72% 12%;
+    --sidebar-foreground: 210 30% 90%;
+    --sidebar-primary: 18 90% 54%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 218 50% 20%;
+    --sidebar-accent-foreground: 210 30% 90%;
+    --sidebar-border: 218 40% 20%;
+    --sidebar-ring: 18 90% 54%;
+  }
+
+  .dark {
+    --background: 218 72% 7%;
+    --foreground: 210 40% 96%;
+    --card: 218 55% 12%;
+    --card-foreground: 210 40% 96%;
+    --popover: 218 55% 12%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 18 90% 54%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 218 50% 20%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 218 40% 18%;
+    --muted-foreground: 218 20% 62%;
+    --accent: 18 90% 54%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62.8% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 218 40% 22%;
+    --input: 218 40% 22%;
+    --ring: 18 90% 54%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+    color: hsl(218, 72%, 12%);
+  }
+}
+
+@layer utilities {
+  /* ── Text visibility helpers ── */
+
+  /* Force dark navy text on explicit white backgrounds,
+     but NOT inside dark navy/gradient containers */
+  .bg-white > *:not(.bg-navy):not(.bg-navy-dark):not([class*="from-navy"]):not([class*="navy-gradient"]):not([class*="brand-gradient"]):not([class*="gold-gradient"]) {
+    color: hsl(218, 72%, 12%);
+  }
+
+  /* Protect text inside dark containers — always white */
+  .bg-navy, .bg-navy-dark,
+  [class*="from-navy"], [class*="navy-gradient"],
+  [class*="brand-gradient"], [class*="gold-gradient"] {
+    color: rgba(255,255,255,0.88);
+  }
+
+  /* Ensure muted-foreground is readable */
+  .text-muted-foreground {
+    color: hsl(218, 35%, 40%) !important;
+  }
+
+  /* Student/admin portal main content area */
+  main.portal-main {
+    color: hsl(218, 72%, 12%);
+  }
+
+  /* Card foreground always dark */
+  .card-body {
+    color: hsl(218, 72%, 12%);
+  }
+
+  /* ── PHILMAC Orange Brand Accent ── */
+  .text-brand {
+    color: hsl(18, 90%, 54%);
+  }
+  .bg-brand {
+    background-color: hsl(18, 90%, 54%);
+  }
+  /* Legacy gold aliases mapped to orange */
+  .text-gold {
+    color: hsl(18, 90%, 54%);
+  }
+  .bg-gold {
+    background-color: hsl(18, 90%, 54%);
+  }
+  .border-gold {
+    border-color: hsl(18, 90%, 54%);
+  }
+
+  /* ── Navy ── */
+  .bg-navy {
+    background-color: hsl(218, 72%, 22%);
+  }
+  .bg-navy-dark {
+    background-color: hsl(218, 72%, 10%);
+  }
+  .text-navy {
+    color: hsl(218, 72%, 22%);
+  }
+
+  /* ── Gradients ── */
+  .gold-gradient {
+    background: linear-gradient(135deg, hsl(18, 90%, 58%), hsl(14, 88%, 46%));
+  }
+  .brand-gradient {
+    background: linear-gradient(135deg, hsl(18, 90%, 58%), hsl(14, 88%, 46%));
+  }
+  .navy-gradient {
+    background: linear-gradient(135deg, hsl(218, 72%, 22%), hsl(218, 72%, 10%));
+  }
+  /* PHILMAC signature diagonal stripe */
+  .philmac-stripe {
+    background: linear-gradient(135deg, hsl(218, 72%, 18%) 0%, hsl(218, 72%, 14%) 60%, hsl(14, 88%, 46%) 100%);
+  }
+
+  /* ── Glass card (for dark backgrounds) ── */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  /* ── Animations ── */
+  @keyframes node-pulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(230, 100, 30, 0.4); }
+    50% { transform: scale(1.05); box-shadow: 0 0 0 8px rgba(230, 100, 30, 0); }
+  }
+  .node-pulse {
+    animation: node-pulse 2s ease-in-out infinite;
+  }
+  @keyframes connector-draw {
+    from { stroke-dashoffset: 200; }
+    to { stroke-dashoffset: 0; }
+  }
+  .connector-draw {
+    stroke-dasharray: 200;
+    animation: connector-draw 1s ease forwards;
+  }
+  @keyframes fade-in-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .fade-in-up {
+    animation: fade-in-up 0.4s ease forwards;
+  }
+}
