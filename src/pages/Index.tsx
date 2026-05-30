@@ -3,7 +3,7 @@ import { ArrowRight, MapPin, Clock, ChevronRight, Star, Users, BookOpen, Trophy,
 import { Button } from '@/components/ui/button';
 import PublicNavbar from '@/components/layout/PublicNavbar';
 import PublicFooter from '@/components/layout/PublicFooter';
-import heroBanner from '@/assets/hero-banner.jpg';
+// heroBanner replaced by uploaded photo
 
 const PROGRAMS = [
   { title: 'Free Forex Derivative Trading Workshop', icon: '🎓', tag: 'FREE', desc: 'Live sessions every Wednesday & Saturday. No cost, no commitment.' },
@@ -47,8 +47,10 @@ export default function Index() {
       {/* ── Hero ── */}
       <section className="relative min-h-screen flex items-center overflow-hidden">
         <div className="absolute inset-0">
-          <img src={heroBanner} alt="PHILMAC Cebu" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[hsl(218,72%,6%)]/95 via-[hsl(218,72%,8%)]/80 to-transparent" />
+          <img src="/philmac-hero.png" alt="PHILMAC Cebu" className="w-full h-full object-cover" style={{ objectPosition: 'center 20%' }} />
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(5,12,35,0.93) 0%, rgba(8,18,50,0.82) 45%, rgba(8,18,50,0.60) 70%, rgba(5,12,35,0.40) 100%)' }} />
+          {/* Extra darkening overlay */}
+          <div className="absolute inset-0" style={{ background: 'rgba(4,9,28,0.30)' }} />
         </div>
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-16">
           <div className="max-w-2xl">
