@@ -2,19 +2,20 @@ import { useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   CheckCircle, Lock, Clock, Users, BookOpen, TrendingUp,
-  Trophy, Award, Star, ChevronRight, AlertCircle, Zap
+  Trophy, Award, Star, ChevronRight, AlertCircle, Zap, DollarSign
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import StudentLayout from '@/components/layout/StudentLayout';
 import { useStudentAuth } from '@/hooks/useAuth';
 import { getStudentsStore } from '@/lib/auth';
 
-interface Stage {
+interface StageData {
   id: number;
-  title: string;
+  label: string;
   subtitle: string;
   icon: React.ElementType;
-  iconColor: string;
+  accentColor: string;
+  accentBg: string;
   requirement: string;
   description: string;
   unlocks: string;
@@ -24,228 +25,218 @@ interface Stage {
   progressLabel?: string;
   actionLabel?: string;
   actionPath?: string;
+  completionPct: number;
 }
 
-function getStageStatus(student: ReturnType<typeof useStudentAuth>['student']): Stage[] {
-  if (!student) return [];
-
+function buildStages(student: NonNullable<ReturnType<typeof useStudentAuth>['student']>): StageData[] {
   const allStudents = getStudentsStore();
   const directStudents = allStudents.filter(s => student.directReferrals.includes(s.id));
   const directs3Done = directStudents.filter(d => d.directReferrals.length >= 3).length;
-  const secondLevel = student.secondLevelReferrals.length;
 
-  // Determine current active stage index
-  const basicDone = student.basicCourseStatus === 'completed' || student.basicCourseProgress === 100;
-  const nextDone = student.nextCourseStatus === 'completed' || student.nextCourseProgress === 100;
-  const finalDone = student.finalCourseStatus === 'completed' || student.finalCourseProgress === 100;
-  const trainingPassed = student.challengeTrainingStatus === 'passed';
-  const profirmPassed = student.challengeProfirmStatus === 'passed';
+  const isActive = !['pending', 'payment_review'].includes(student.status);
+  const basicDone = student.basicCourseStatus === 'completed';
+  const nextDone = student.nextCourseStatus === 'completed';
+  const finalDone = student.finalCourseStatus === 'completed';
   const direct3Met = student.directReferrals.length >= 3;
   const threeByThreeMet = directs3Done >= 3;
-  const isActive = !['pending', 'payment_review'].includes(student.status);
+  const trainingPassed = student.challengeTrainingStatus === 'passed';
+  const profirmPassed = student.challengeProfirmStatus === 'passed';
   const certIssued = student.certificateIssued;
+  const logCount = JSON.parse(localStorage.getItem(`philmac_training_logs_${student.id}`) || '[]').length as number;
 
-  const stages: Stage[] = [
+  return [
     {
       id: 1,
-      title: 'Registered Student',
+      label: 'Register & Subscribe',
       subtitle: 'Stage 1',
       icon: Star,
-      iconColor: 'text-amber-500',
-      requirement: 'Submit registration form',
-      description: 'Create your PHILMAC Cebu account and submit your registration details.',
-      unlocks: 'Student account access',
-      status: 'completed',
+      accentColor: '#d97706',
+      accentBg: '#fef3c7',
+      requirement: 'Submit registration form and pay $100 subscription',
+      description: 'Create your PHILMAC Cebu account, submit registration details, and complete the $100 training subscription to activate your student portal.',
+      unlocks: 'Student portal access, referral code, and Basic Course',
+      status: isActive ? 'completed' : student.status === 'payment_review' ? 'pending' : 'active',
+      completionPct: isActive ? 100 : student.status === 'payment_review' ? 50 : 0,
+      progressLabel: isActive ? 'Subscription verified' : student.status === 'payment_review' ? 'Payment under review' : 'Not started',
     },
     {
       id: 2,
-      title: 'Paid Subscriber',
+      label: 'Basic Forex Course',
       subtitle: 'Stage 2',
-      icon: Zap,
-      iconColor: 'text-blue-500',
-      requirement: 'Subscribe for $100 — admin verifies payment',
-      description: 'Pay the $100 training subscription to unlock your student portal, basic course, and referral system.',
-      unlocks: 'Student Portal + Basic Course + Referral Code',
-      status: isActive ? 'completed' : student.status === 'payment_review' ? 'pending' : 'active',
-    },
-    {
-      id: 3,
-      title: 'Basic Course',
-      subtitle: 'Stage 3',
       icon: BookOpen,
-      iconColor: 'text-blue-600',
-      requirement: 'Complete all Basic Course lessons',
-      description: 'Learn forex fundamentals, market structure, candlestick patterns, support & resistance, and trading psychology.',
-      unlocks: 'Eligibility to start inviting referrals for Next Course',
+      accentColor: '#2563eb',
+      accentBg: '#dbeafe',
+      requirement: 'Complete all Basic Course lessons (video + quizzes)',
+      description: 'Learn forex fundamentals, market structure, candlestick patterns, support & resistance, and trading psychology through structured lesson modules.',
+      unlocks: 'Eligibility to invite referrals and unlock Next Course',
       status: !isActive ? 'locked' : basicDone ? 'completed' : 'active',
       progressValue: student.basicCourseProgress,
       progressMax: 100,
       progressLabel: `${student.basicCourseProgress}% complete`,
       actionLabel: 'Go to Basic Course',
       actionPath: '/student/courses',
+      completionPct: student.basicCourseProgress,
     },
     {
-      id: 4,
-      title: 'Invite 3 Direct Students',
-      subtitle: 'Stage 4',
+      id: 3,
+      label: 'Invite 3 Direct Referrals',
+      subtitle: 'Stage 3',
       icon: Users,
-      iconColor: 'text-purple-600',
-      requirement: '3 direct students must subscribe for $100 each',
-      description: 'Share your referral code and invite 3 friends or contacts who sign up and pay the $100 training subscription.',
+      accentColor: '#7c3aed',
+      accentBg: '#ede9fe',
+      requirement: '3 direct contacts must sign up and pay $100 each',
+      description: 'Share your unique referral code with friends or contacts. They must register and complete the $100 subscription to count as your direct referral.',
       unlocks: 'Technical Analysis Training (Next Course)',
       status: !isActive ? 'locked' : direct3Met ? 'completed' : basicDone ? 'active' : 'locked',
       progressValue: student.directReferrals.length,
       progressMax: 3,
-      progressLabel: `${student.directReferrals.length} of 3 direct referrals paid`,
-      actionLabel: 'View Referral Network',
+      progressLabel: `${student.directReferrals.length} of 3 direct referrals subscribed`,
+      actionLabel: 'Share Referral Link',
       actionPath: '/student/referrals',
+      completionPct: Math.min(Math.round((student.directReferrals.length / 3) * 100), 100),
     },
     {
-      id: 5,
-      title: 'Next Course — Technical Analysis',
-      subtitle: 'Stage 5',
+      id: 4,
+      label: 'Technical Analysis Training',
+      subtitle: 'Stage 4',
       icon: TrendingUp,
-      iconColor: 'text-indigo-600',
-      requirement: 'Complete Technical Analysis Training',
-      description: 'Advanced chart patterns, indicators, entry/exit strategies, trend confirmation methods, and trading journal setup.',
-      unlocks: 'Eligibility for Final Course once 3x3 is met',
+      accentColor: '#0891b2',
+      accentBg: '#cffafe',
+      requirement: 'Complete all Technical Analysis Training lessons',
+      description: 'Advanced chart patterns, trend indicators, RSI/MACD analysis, entry and exit strategies, and a structured trading journal setup.',
+      unlocks: 'Eligibility for Final Course once 3×3 network is complete',
       status: !direct3Met ? 'locked' : nextDone ? 'completed' : direct3Met ? 'active' : 'locked',
       progressValue: student.nextCourseProgress,
       progressMax: 100,
       progressLabel: `${student.nextCourseProgress}% complete`,
-      actionLabel: 'Go to Next Course',
+      actionLabel: 'Continue Next Course',
       actionPath: '/student/courses',
+      completionPct: student.nextCourseProgress,
     },
     {
-      id: 6,
-      title: 'Complete 3x3 Referral Network',
-      subtitle: 'Stage 6',
+      id: 5,
+      label: 'Build 3×3 Referral Network',
+      subtitle: 'Stage 5',
       icon: Users,
-      iconColor: 'text-violet-600',
-      requirement: 'Each of your 3 directs must invite 3 paid students',
-      description: 'Your 3 direct referrals each need to bring in 3 paid students — creating a 3x3 network of 9 second-level students.',
+      accentColor: '#6d28d9',
+      accentBg: '#ede9fe',
+      requirement: 'Each of your 3 directs must invite 3 paid students (9 total)',
+      description: 'Your 3 direct referrals each need to bring in 3 paid subscribers — creating a 3×3 network of 9 second-level students to unlock the Final Course.',
       unlocks: 'Advanced Trading Mentorship (Final Course)',
       status: !direct3Met ? 'locked' : threeByThreeMet ? 'completed' : 'active',
       progressValue: directs3Done,
       progressMax: 3,
-      progressLabel: `${directs3Done} of 3 directs have 3+ sub-referrals`,
+      progressLabel: `${directs3Done} of 3 directs have 3+ paid sub-referrals`,
       actionLabel: 'View Referral Tree',
       actionPath: '/student/referrals',
+      completionPct: Math.min(Math.round((directs3Done / 3) * 100), 100),
     },
     {
-      id: 7,
-      title: 'Final Course — Advanced Mentorship',
-      subtitle: 'Stage 7',
+      id: 6,
+      label: 'Advanced Trading Mentorship',
+      subtitle: 'Stage 6',
       icon: BookOpen,
-      iconColor: 'text-cyan-600',
-      requirement: 'Complete Advanced Trading Mentorship',
-      description: 'Advanced strategy development, professional risk control, building a trading routine, and challenge preparation.',
+      accentColor: '#0f766e',
+      accentBg: '#ccfbf1',
+      requirement: 'Complete all Advanced Mentorship lessons',
+      description: 'Strategy refinement, position sizing mastery, professional risk management frameworks, trading routine building, and challenge preparation.',
       unlocks: '30-Day Training Challenge access',
       status: !threeByThreeMet ? 'locked' : finalDone ? 'completed' : threeByThreeMet ? 'active' : 'locked',
       progressValue: student.finalCourseProgress,
       progressMax: 100,
       progressLabel: `${student.finalCourseProgress}% complete`,
-      actionLabel: 'Go to Final Course',
+      actionLabel: 'Continue Final Course',
       actionPath: '/student/courses',
+      completionPct: student.finalCourseProgress,
     },
     {
-      id: 8,
-      title: '30-Day Training Challenge',
-      subtitle: 'Stage 8',
+      id: 7,
+      label: '30-Day Training Challenge',
+      subtitle: 'Stage 7',
       icon: Trophy,
-      iconColor: 'text-amber-600',
+      accentColor: '#b45309',
+      accentBg: '#fef3c7',
       requirement: 'Submit 30 daily trading logs and pass admin review',
-      description: 'Complete 30 consecutive days of trading journal entries, market analysis notes, risk management checklists, and screenshot uploads.',
+      description: 'Complete 30 consecutive days of trading journal entries, market analysis notes, risk management checklists, and screenshot documentation.',
       unlocks: '30-Day Pro Firm Challenge access',
       status: !finalDone ? 'locked'
         : trainingPassed ? 'completed'
         : student.challengeTrainingStatus === 'active' ? 'active'
         : finalDone ? 'active'
         : 'locked',
-      progressValue: student.challengeTrainingStatus === 'active' ? 15 : trainingPassed ? 30 : 0,
+      progressValue: logCount,
       progressMax: 30,
-      progressLabel: student.challengeTrainingStatus === 'active' ? 'Day 15 of 30 in progress'
-        : trainingPassed ? '30/30 days — Passed!'
-        : 'Not started yet',
+      progressLabel: trainingPassed ? '30/30 days — Passed!' : `${logCount}/30 logs submitted`,
       actionLabel: 'Go to Training Challenge',
       actionPath: '/student/challenge-training',
+      completionPct: trainingPassed ? 100 : Math.min(Math.round((logCount / 30) * 100), 100),
     },
     {
-      id: 9,
-      title: '30-Day Pro Firm Challenge',
-      subtitle: 'Stage 9',
+      id: 8,
+      label: '30-Day Pro Firm Challenge',
+      subtitle: 'Stage 8',
       icon: Trophy,
-      iconColor: 'text-brand',
+      accentColor: '#dc2626',
+      accentBg: '#fee2e2',
       requirement: 'Complete 30-day Pro Firm evaluation and pass admin review',
-      description: 'Final evaluation stage: 30-day trading discipline, risk management monitoring, daily reporting, and performance review.',
+      description: 'Final evaluation: 30-day trading discipline, real-time risk monitoring, daily performance reporting, and professional evaluation by PHILMAC mentors.',
       unlocks: 'PHILMAC Certificate + $500 Completion Award',
       status: !trainingPassed ? 'locked'
         : profirmPassed ? 'completed'
         : student.challengeProfirmStatus === 'active' ? 'active'
         : trainingPassed ? 'active'
         : 'locked',
-      progressValue: student.challengeProfirmStatus === 'active' ? 8 : profirmPassed ? 30 : 0,
+      progressValue: profirmPassed ? 30 : student.challengeProfirmStatus === 'active' ? 8 : 0,
       progressMax: 30,
-      progressLabel: student.challengeProfirmStatus === 'active' ? 'Day 8 of 30 in progress'
-        : profirmPassed ? '30/30 days — Passed!'
-        : 'Locked until Training Challenge passes',
+      progressLabel: profirmPassed ? '30/30 days — Passed!' : student.challengeProfirmStatus === 'active' ? 'Day 8 of 30 in progress' : 'Locked until Training Challenge passes',
       actionLabel: 'Go to Pro Firm Challenge',
       actionPath: '/student/challenge-profirm',
+      completionPct: profirmPassed ? 100 : student.challengeProfirmStatus === 'active' ? Math.round((8 / 30) * 100) : 0,
     },
     {
-      id: 10,
-      title: 'Certificate & $500 Award',
-      subtitle: 'Stage 10',
+      id: 9,
+      label: 'Certification & $500 Award',
+      subtitle: 'Stage 9',
       icon: Award,
-      iconColor: 'text-emerald-600',
-      requirement: 'Pass Pro Firm Challenge + Admin verification',
-      description: 'Admin verifies all completed requirements and issues your PHILMAC Cebu Training Certificate and $500 Completion Award.',
-      unlocks: 'Certified PHILMAC Trader status',
-      status: certIssued ? 'completed'
-        : profirmPassed ? 'pending'
-        : 'locked',
-      actionLabel: 'View Certificate & Awards',
+      accentColor: '#065f46',
+      accentBg: '#d1fae5',
+      requirement: 'Pass Pro Firm Challenge — admin verifies all requirements',
+      description: 'Admin reviews all completed requirements and issues your official PHILMAC Cebu Training Certificate and the $500 Completion Award.',
+      unlocks: 'Certified PHILMAC Trader — your journey complete!',
+      status: certIssued ? 'completed' : profirmPassed ? 'pending' : 'locked',
+      completionPct: certIssued ? 100 : profirmPassed ? 75 : 0,
+      progressLabel: certIssued ? 'Certificate issued' : profirmPassed ? 'Awaiting admin verification' : 'Locked',
+      actionLabel: 'View Certificate & Award',
       actionPath: '/student/certificates',
     },
   ];
-
-  return stages;
 }
 
-const STATUS_CONFIG = {
-  completed: {
-    badge: 'bg-green-100 text-green-700 border-green-200',
-    ring: 'border-green-400 bg-green-50',
-    icon: CheckCircle,
-    iconClass: 'text-green-500',
-    label: 'Completed',
-    connector: 'bg-green-400',
-  },
-  active: {
-    badge: 'bg-blue-100 text-blue-700 border-blue-200',
-    ring: 'border-brand bg-orange-50',
-    icon: Zap,
-    iconClass: 'text-brand',
-    label: 'In Progress',
-    connector: 'bg-brand',
-  },
-  pending: {
-    badge: 'bg-amber-100 text-amber-700 border-amber-200',
-    ring: 'border-amber-400 bg-amber-50',
-    icon: Clock,
-    iconClass: 'text-amber-500',
-    label: 'Pending Review',
-    connector: 'bg-amber-300',
-  },
-  locked: {
-    badge: 'bg-muted text-muted-foreground border-border',
-    ring: 'border-border bg-white',
-    icon: Lock,
-    iconClass: 'text-muted-foreground',
-    label: 'Locked',
-    connector: 'bg-border',
-  },
+// ── Status metadata ─────────────────────────────────────────────────────────
+const STATUS_META = {
+  completed: { label: 'Completed',     ringColor: '#16a34a', textColor: '#166534', bgColor: '#f0fdf4', borderColor: '#bbf7d0' },
+  active:    { label: 'In Progress',   ringColor: 'hsl(18,90%,48%)', textColor: '#9a3412', bgColor: '#fff7ed', borderColor: '#fed7aa' },
+  pending:   { label: 'Pending Review',ringColor: '#d97706', textColor: '#92400e', bgColor: '#fffbeb', borderColor: '#fde68a' },
+  locked:    { label: 'Locked',        ringColor: 'hsl(215,18%,75%)', textColor: 'hsl(218,35%,52%)', bgColor: '#ffffff', borderColor: 'hsl(215,18%,88%)' },
 };
+
+// ── Donut ring SVG ──────────────────────────────────────────────────────────
+function DonutRing({ pct, color, size = 48 }: { pct: number; color: string; size?: number }) {
+  const r = (size - 8) / 2;
+  const circ = 2 * Math.PI * r;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)', shrink: 0 }}>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="hsl(215,18%,90%)" strokeWidth={6} />
+      <circle
+        cx={size/2} cy={size/2} r={r} fill="none"
+        stroke={color} strokeWidth={6}
+        strokeLinecap="round"
+        strokeDasharray={`${(pct / 100) * circ} ${circ}`}
+        style={{ transition: 'stroke-dasharray 0.8s ease' }}
+      />
+    </svg>
+  );
+}
 
 export default function StudentStages() {
   const navigate = useNavigate();
@@ -257,233 +248,363 @@ export default function StudentStages() {
 
   if (loading || !student) return null;
 
-  const stages = getStageStatus(student);
-  const currentActiveStage = stages.find(s => s.status === 'active' || s.status === 'pending');
+  const stages = buildStages(student);
   const completedCount = stages.filter(s => s.status === 'completed').length;
-  const progressPercent = Math.round((completedCount / stages.length) * 100);
+  const overallPct = Math.round((completedCount / stages.length) * 100);
+  const currentStage = stages.find(s => s.status === 'active' || s.status === 'pending');
 
   return (
     <StudentLayout>
-      <div className="max-w-3xl space-y-6">
-        {/* Header */}
+      <div className="max-w-3xl space-y-5">
+
+        {/* ── Header ── */}
         <div>
-          <h1 className="text-xl font-black text-[hsl(218,72%,12%)]">Course Stage Progress</h1>
-          <p className="text-[hsl(218,35%,32%)] text-sm mt-0.5">Your complete journey from registration to certified trader.</p>
+          <h1 className="text-xl font-black" style={{ color: 'hsl(218,72%,12%)' }}>Training Stage Map</h1>
+          <p style={{ color: 'hsl(218,35%,52%)' }} className="text-sm mt-0.5">
+            Your complete 9-stage journey from registration to Certified PHILMAC Trader.
+          </p>
         </div>
 
-        {/* Overall Progress Card */}
-        <div className="bg-gradient-to-br from-[hsl(218,72%,12%)] to-[hsl(218,72%,20%)] rounded-2xl p-6 text-white">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
-            <div>
-              <p className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-1">Overall Progress</p>
-              <p className="text-3xl font-black text-white">{completedCount}<span className="text-white/50 text-xl font-normal"> / {stages.length} stages</span></p>
-              {currentActiveStage && (
-                <p className="text-brand text-sm font-semibold mt-1">
-                  Currently at: {currentActiveStage.title}
+        {/* ── Overall Progress Banner ── */}
+        <div
+          className="rounded-2xl p-5 relative overflow-hidden"
+          style={{ background: 'linear-gradient(135deg, hsl(218,72%,14%), hsl(218,72%,8%))' }}
+        >
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{ background: 'radial-gradient(circle at 90% 50%, rgba(234,88,12,0.18) 0%, transparent 60%)' }}
+          />
+          <div className="relative flex items-center justify-between gap-6 flex-wrap">
+            <div className="flex items-center gap-4">
+              {/* Big ring */}
+              <div className="relative shrink-0">
+                <DonutRing pct={overallPct} color="hsl(18,90%,54%)" size={72} />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span style={{ color: '#ffffff', fontSize: 16, fontWeight: 900, lineHeight: 1 }}>{overallPct}%</span>
+                </div>
+              </div>
+              <div>
+                <p style={{ color: 'rgba(255,255,255,0.55)' }} className="text-xs font-semibold uppercase tracking-wide mb-1">
+                  Overall Progress
                 </p>
-              )}
-            </div>
-            <div className="relative w-20 h-20 shrink-0">
-              <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
-                <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="8" />
-                <circle
-                  cx="40" cy="40" r="32" fill="none"
-                  stroke="hsl(18,90%,54%)" strokeWidth="8"
-                  strokeLinecap="round"
-                  strokeDasharray={`${2 * Math.PI * 32}`}
-                  strokeDashoffset={`${2 * Math.PI * 32 * (1 - progressPercent / 100)}`}
-                  className="transition-all duration-1000"
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-white font-black text-sm">{progressPercent}%</span>
+                <p style={{ color: '#ffffff', fontSize: 26, fontWeight: 900, lineHeight: 1 }}>
+                  {completedCount}
+                  <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 15, fontWeight: 400 }}> / {stages.length} stages</span>
+                </p>
+                {currentStage && (
+                  <p style={{ color: 'hsl(18,90%,60%)' }} className="text-xs font-semibold mt-1">
+                    Active: {currentStage.label}
+                  </p>
+                )}
               </div>
             </div>
+
+            {/* Mini milestone markers */}
+            <div className="flex gap-3 flex-wrap">
+              {[
+                { label: 'Completed', val: completedCount, color: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
+                { label: 'Remaining', val: stages.length - completedCount, color: 'rgba(255,255,255,0.60)', bg: 'rgba(255,255,255,0.06)' },
+                { label: 'Locked',    val: stages.filter(s => s.status === 'locked').length, color: 'rgba(255,255,255,0.40)', bg: 'rgba(255,255,255,0.04)' },
+              ].map(m => (
+                <div key={m.label} className="text-center px-3 py-2 rounded-xl" style={{ background: m.bg }}>
+                  <p style={{ color: m.color, fontSize: 18, fontWeight: 900, lineHeight: 1 }}>{m.val}</p>
+                  <p style={{ color: 'rgba(255,255,255,0.40)', fontSize: 10 }}>{m.label}</p>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="w-full bg-white/10 rounded-full h-2">
-            <div
-              className="h-2 rounded-full brand-gradient transition-all duration-1000"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-          <div className="flex justify-between mt-1.5">
-            <span className="text-white/50 text-xs">Registration</span>
-            <span className="text-white/50 text-xs">Certified Trader</span>
+
+          {/* Progress bar */}
+          <div className="relative mt-4">
+            <div className="w-full rounded-full h-1.5" style={{ background: 'rgba(255,255,255,0.10)' }}>
+              <div
+                className="h-1.5 rounded-full transition-all duration-1000"
+                style={{ width: `${overallPct}%`, background: 'linear-gradient(90deg, hsl(218,72%,38%), hsl(18,90%,54%))' }}
+              />
+            </div>
           </div>
         </div>
 
-        {/* Current Stage Spotlight */}
-        {currentActiveStage && (
-          <div className="border-2 border-brand rounded-2xl p-5 bg-orange-50">
+        {/* ── Active Stage Spotlight ── */}
+        {currentStage && (
+          <div
+            className="rounded-2xl p-5"
+            style={{
+              background: currentStage.accentBg,
+              border: `2px solid ${currentStage.accentColor}40`,
+            }}
+          >
             <div className="flex items-center gap-2 mb-3">
-              <Zap className="w-4 h-4 text-brand" />
-              <span className="text-xs font-black text-brand uppercase tracking-wide">Current Stage</span>
+              <Zap className="w-4 h-4" style={{ color: currentStage.accentColor }} />
+              <span className="text-xs font-black uppercase tracking-wide" style={{ color: currentStage.accentColor }}>
+                {currentStage.status === 'pending' ? 'Pending Review' : 'Currently Active'} — {currentStage.subtitle}
+              </span>
             </div>
             <div className="flex items-start justify-between gap-4 flex-wrap">
-              <div>
-                <p className="text-xs text-[hsl(218,35%,32%)] font-semibold">{currentActiveStage.subtitle}</p>
-                <h3 className="text-lg font-black text-[hsl(218,72%,12%)] leading-tight">{currentActiveStage.title}</h3>
-                <p className="text-sm text-[hsl(218,35%,32%)] mt-1 leading-relaxed">{currentActiveStage.description}</p>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg font-black leading-tight mb-1" style={{ color: 'hsl(218,72%,12%)' }}>
+                  {currentStage.label}
+                </h3>
+                <p className="text-sm leading-relaxed" style={{ color: 'hsl(218,35%,38%)' }}>
+                  {currentStage.description}
+                </p>
               </div>
-              {currentActiveStage.actionLabel && currentActiveStage.actionPath && (
-                <Button asChild size="sm" className="brand-gradient text-white font-bold hover:opacity-90 shrink-0 gap-1.5">
-                  <Link to={currentActiveStage.actionPath}>
-                    {currentActiveStage.actionLabel} <ChevronRight className="w-3.5 h-3.5" />
+              {currentStage.actionLabel && currentStage.actionPath && (
+                <Button
+                  asChild size="sm"
+                  className="shrink-0 gap-1.5 font-bold text-white"
+                  style={{ background: currentStage.accentColor }}
+                >
+                  <Link to={currentStage.actionPath}>
+                    {currentStage.actionLabel} <ChevronRight className="w-3.5 h-3.5" />
                   </Link>
                 </Button>
               )}
             </div>
-            {currentActiveStage.progressValue !== undefined && currentActiveStage.progressMax && (
+
+            {currentStage.progressValue !== undefined && currentStage.progressMax !== undefined && (
               <div className="mt-4">
-                <div className="flex justify-between mb-1">
-                  <span className="text-xs font-semibold text-[hsl(218,72%,12%)]">Progress</span>
-                  <span className="text-xs text-[hsl(218,35%,32%)]">{currentActiveStage.progressLabel}</span>
+                <div className="flex items-center justify-between mb-1.5 gap-2">
+                  <span className="text-xs font-semibold" style={{ color: 'hsl(218,72%,12%)' }}>{currentStage.progressLabel}</span>
+                  <span className="text-xs font-black" style={{ color: currentStage.accentColor }}>
+                    {currentStage.progressValue}/{currentStage.progressMax}
+                  </span>
                 </div>
-                <div className="w-full bg-white rounded-full h-2.5">
+                <div className="w-full rounded-full h-2.5" style={{ background: 'rgba(0,0,0,0.08)' }}>
                   <div
-                    className="h-2.5 rounded-full brand-gradient transition-all duration-700"
-                    style={{ width: `${Math.min((currentActiveStage.progressValue / currentActiveStage.progressMax) * 100, 100)}%` }}
+                    className="h-2.5 rounded-full transition-all duration-700"
+                    style={{
+                      width: `${Math.min((currentStage.progressValue / currentStage.progressMax) * 100, 100)}%`,
+                      background: currentStage.accentColor,
+                    }}
                   />
                 </div>
-                <p className="text-xs text-[hsl(218,35%,32%)] mt-1">{currentActiveStage.progressValue} / {currentActiveStage.progressMax}</p>
               </div>
             )}
           </div>
         )}
 
-        {/* All Stages Timeline */}
-        <div className="space-y-0">
-          {stages.map((stage, index) => {
-            const config = STATUS_CONFIG[stage.status];
-            const StatusIcon = config.icon;
+        {/* ── Stage Cards Grid ── */}
+        <div className="space-y-3">
+          {stages.map((stage, idx) => {
+            const meta = STATUS_META[stage.status];
             const StageIcon = stage.icon;
-            const isLast = index === stages.length - 1;
-            const isActive = stage.status === 'active';
             const isCompleted = stage.status === 'completed';
+            const isActive = stage.status === 'active';
+            const isPending = stage.status === 'pending';
+            const isLocked = stage.status === 'locked';
 
             return (
-              <div key={stage.id} className="flex gap-4">
-                {/* Timeline Column */}
-                <div className="flex flex-col items-center w-10 shrink-0">
-                  <div className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all ${config.ring} ${isActive ? 'ring-2 ring-brand/30 ring-offset-2' : ''}`}>
-                    {isCompleted
-                      ? <CheckCircle className="w-5 h-5 text-green-500" />
-                      : <StageIcon className={`w-4 h-4 ${isActive ? 'text-brand' : stage.status === 'locked' ? 'text-[hsl(218,35%,52%)]' : config.iconClass}`} />
-                    }
+              <div
+                key={stage.id}
+                className="rounded-2xl overflow-hidden transition-all"
+                style={{
+                  border: `1.5px solid ${meta.borderColor}`,
+                  background: meta.bgColor,
+                  opacity: isLocked ? 0.65 : 1,
+                }}
+              >
+                {/* Card Header */}
+                <div className="p-4">
+                  <div className="flex items-start gap-4">
+                    {/* Stage Icon + Donut */}
+                    <div className="relative shrink-0">
+                      <DonutRing pct={stage.completionPct} color={isLocked ? 'hsl(215,18%,78%)' : stage.accentColor} size={52} />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        {isCompleted ? (
+                          <CheckCircle className="w-5 h-5" style={{ color: '#16a34a' }} />
+                        ) : isLocked ? (
+                          <Lock className="w-4 h-4" style={{ color: 'hsl(215,18%,65%)' }} />
+                        ) : isPending ? (
+                          <Clock className="w-4 h-4" style={{ color: '#d97706' }} />
+                        ) : (
+                          <StageIcon className="w-4 h-4" style={{ color: stage.accentColor }} />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2 flex-wrap">
+                        <div>
+                          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                            <span className="text-xs font-semibold" style={{ color: 'hsl(218,35%,55%)' }}>
+                              {stage.subtitle}
+                            </span>
+                            <span
+                              className="text-xs font-bold px-2 py-0.5 rounded-full"
+                              style={{ background: meta.bgColor === '#ffffff' ? 'hsl(215,18%,90%)' : 'rgba(0,0,0,0.07)', color: meta.textColor }}
+                            >
+                              {meta.label}
+                            </span>
+                          </div>
+                          <h3
+                            className="font-black text-sm sm:text-base leading-tight"
+                            style={{ color: isLocked ? 'hsl(218,35%,52%)' : 'hsl(218,72%,12%)' }}
+                          >
+                            {stage.label}
+                          </h3>
+                        </div>
+
+                        {/* Completion % badge */}
+                        <div
+                          className="text-right shrink-0 px-2 py-1 rounded-xl"
+                          style={{ background: isCompleted ? '#dcfce7' : isLocked ? 'hsl(215,18%,92%)' : stage.accentBg }}
+                        >
+                          <span
+                            className="font-black"
+                            style={{
+                              fontSize: 18,
+                              lineHeight: 1,
+                              color: isCompleted ? '#16a34a' : isLocked ? 'hsl(215,18%,62%)' : stage.accentColor,
+                            }}
+                          >
+                            {stage.completionPct}%
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Description for active/completed stages */}
+                      {(isActive || isCompleted || isPending) && (
+                        <p className="text-xs leading-relaxed mt-1.5" style={{ color: 'hsl(218,35%,42%)' }}>
+                          {stage.description}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  {!isLast && (
-                    <div className={`w-0.5 flex-1 my-1 min-h-[2rem] ${config.connector}`} />
+
+                  {/* Progress bar for active stages */}
+                  {(isActive || isPending) && stage.progressValue !== undefined && stage.progressMax !== undefined && (
+                    <div className="mt-3 ml-16">
+                      <div className="flex items-center justify-between mb-1 gap-2">
+                        <span className="text-xs" style={{ color: 'hsl(218,35%,48%)' }}>{stage.progressLabel}</span>
+                        <span className="text-xs font-bold" style={{ color: stage.accentColor }}>
+                          {stage.progressValue}/{stage.progressMax}
+                        </span>
+                      </div>
+                      <div className="w-full rounded-full h-2" style={{ background: 'rgba(0,0,0,0.08)' }}>
+                        <div
+                          className="h-2 rounded-full transition-all duration-700"
+                          style={{
+                            width: `${Math.min((stage.progressValue / stage.progressMax) * 100, 100)}%`,
+                            background: stage.accentColor,
+                          }}
+                        />
+                      </div>
+                    </div>
                   )}
                 </div>
 
-                {/* Stage Card */}
-                <div className={`flex-1 pb-6 ${isLast ? 'pb-0' : ''}`}>
-                  <div className={`rounded-xl border p-4 transition-all ${
-                    isActive ? 'border-brand/40 bg-orange-50/60 shadow-sm' :
-                    isCompleted ? 'border-green-200 bg-green-50/40' :
-                    stage.status === 'pending' ? 'border-amber-200 bg-amber-50/40' :
-                    'border-border bg-white opacity-60'
-                  }`}>
-                    {/* Stage Header */}
-                    <div className="flex items-start justify-between gap-3 mb-2">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                          <span className="text-[10px] text-[hsl(218,35%,42%)] font-semibold uppercase tracking-wide">{stage.subtitle}</span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${config.badge}`}>
-                            {config.label}
-                          </span>
-                        </div>
-                        <h3 className={`font-black leading-tight text-sm sm:text-base ${
-                          stage.status === 'locked' ? 'text-[hsl(218,35%,42%)]' : 'text-[hsl(218,72%,12%)]'
-                        }`}>{stage.title}</h3>
+                {/* Expanded footer for non-locked stages */}
+                {!isLocked && (
+                  <div
+                    className="px-4 pb-4 pt-0 ml-16 space-y-3"
+                  >
+                    {/* Requirement chip */}
+                    <div
+                      className="flex items-start gap-2 rounded-xl px-3 py-2.5"
+                      style={{
+                        background: isCompleted ? '#f0fdf4' : 'rgba(0,0,0,0.04)',
+                        border: `1px solid ${isCompleted ? '#bbf7d0' : 'rgba(0,0,0,0.06)'}`,
+                      }}
+                    >
+                      {isCompleted
+                        ? <CheckCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: '#16a34a' }} />
+                        : isPending
+                        ? <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: '#d97706' }} />
+                        : <div className="w-3.5 h-3.5 shrink-0 mt-0.5 rounded-full border-2" style={{ borderColor: stage.accentColor }} />}
+                      <div>
+                        <span className="text-xs font-semibold" style={{ color: 'hsl(218,35%,48%)' }}>Requirement: </span>
+                        <span className="text-xs" style={{ color: isCompleted ? '#166534' : 'hsl(218,72%,12%)' }}>
+                          {stage.requirement}
+                        </span>
                       </div>
-                      {isCompleted && <CheckCircle className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />}
-                      {stage.status === 'pending' && <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />}
                     </div>
 
-                    {/* Description */}
-                    {(isActive || isCompleted || stage.status === 'pending') && (
-                      <p className="text-xs text-[hsl(218,35%,32%)] leading-relaxed mb-3">{stage.description}</p>
-                    )}
-
-                    {/* Requirement */}
-                    <div className={`text-xs rounded-lg px-3 py-2 mb-3 ${
-                      isCompleted ? 'bg-green-100/60 text-green-700' :
-                      isActive ? 'bg-white text-[hsl(218,72%,12%)]' :
-                      stage.status === 'pending' ? 'bg-amber-100/60 text-amber-800' :
-                      'bg-muted text-[hsl(218,35%,42%)]'
-                    }`}>
-                      <span className="font-semibold">Requirement: </span>{stage.requirement}
-                    </div>
-
-                    {/* Unlocks */}
-                    <div className="flex items-center gap-1.5 mb-3">
-                      <ChevronRight className="w-3 h-3 text-brand shrink-0" />
-                      <span className="text-xs text-[hsl(218,35%,32%)]">
-                        <span className="font-semibold text-[hsl(218,72%,12%)]">Unlocks: </span>
+                    {/* Unlocks row */}
+                    <div className="flex items-center gap-1.5">
+                      <ChevronRight className="w-3 h-3 shrink-0" style={{ color: stage.accentColor }} />
+                      <p className="text-xs" style={{ color: 'hsl(218,35%,42%)' }}>
+                        <span className="font-semibold" style={{ color: 'hsl(218,72%,12%)' }}>Unlocks: </span>
                         {stage.unlocks}
-                      </span>
+                      </p>
                     </div>
 
-                    {/* Progress Bar */}
-                    {(isActive || isCompleted) && stage.progressValue !== undefined && stage.progressMax && (
-                      <div className="mb-3">
-                        <div className="flex justify-between mb-1">
-                          <span className="text-xs text-[hsl(218,35%,32%)]">{stage.progressLabel}</span>
-                          <span className="text-xs font-bold text-[hsl(218,72%,12%)]">
-                            {stage.progressValue}/{stage.progressMax}
-                          </span>
-                        </div>
-                        <div className="w-full bg-[hsl(215,20%,88%)] rounded-full h-2">
-                          <div
-                            className={`h-2 rounded-full transition-all duration-700 ${isCompleted ? 'bg-green-500' : 'brand-gradient'}`}
-                            style={{ width: `${Math.min((stage.progressValue / stage.progressMax) * 100, 100)}%` }}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Action Button */}
+                    {/* Action button */}
                     {isActive && stage.actionLabel && stage.actionPath && (
-                      <Button asChild size="sm" className="brand-gradient text-white font-bold hover:opacity-90 gap-1.5 h-8 text-xs">
+                      <Button
+                        asChild size="sm"
+                        className="gap-1.5 font-bold text-white h-8 text-xs"
+                        style={{ background: stage.accentColor }}
+                      >
                         <Link to={stage.actionPath}>
                           {stage.actionLabel} <ChevronRight className="w-3 h-3" />
                         </Link>
                       </Button>
                     )}
 
-                    {stage.status === 'pending' && (
-                      <div className="flex items-center gap-2 text-amber-700 text-xs font-semibold">
-                        <Clock className="w-3.5 h-3.5" />
-                        Waiting for admin verification
+                    {isPending && (
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-3.5 h-3.5 shrink-0" style={{ color: '#d97706' }} />
+                        <span className="text-xs font-semibold" style={{ color: '#92400e' }}>
+                          Waiting for admin verification — usually within 24 hours
+                        </span>
                       </div>
                     )}
                   </div>
-                </div>
+                )}
+
+                {/* Locked footer */}
+                {isLocked && (
+                  <div className="px-4 pb-3 ml-16">
+                    <p className="text-xs" style={{ color: 'hsl(218,35%,58%)' }}>
+                      <span className="font-semibold">Unlock condition: </span>{stage.requirement}
+                    </p>
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
 
-        {/* Completion Banner */}
-        {student.status === 'completed' || student.status === 'awarded' ? (
-          <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 text-white text-center">
-            <CheckCircle className="w-12 h-12 mx-auto mb-3 text-white" />
-            <h3 className="text-xl font-black mb-2">Congratulations, Certified Trader!</h3>
-            <p className="text-white/80 text-sm mb-4">You have completed all stages of the PHILMAC Cebu training program.</p>
-            <div className="flex gap-3 justify-center flex-wrap">
-              <Button asChild size="sm" variant="outline" className="border-white/40 text-white hover:bg-white/10">
-                <Link to="/student/certificates">View Certificate</Link>
-              </Button>
-              <Button asChild size="sm" variant="outline" className="border-white/40 text-white hover:bg-white/10">
-                <Link to="/student/awards">View Award</Link>
-              </Button>
+        {/* ── Completion Banner ── */}
+        {(student.status === 'completed' || student.status === 'awarded') ? (
+          <div
+            className="rounded-2xl p-6 text-center relative overflow-hidden"
+            style={{ background: 'linear-gradient(135deg, #065f46, #047857)' }}
+          >
+            <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.06) 0%, transparent 70%)' }} />
+            <div className="relative">
+              <CheckCircle className="w-12 h-12 mx-auto mb-3 text-white" />
+              <h3 className="text-xl font-black text-white mb-2">Congratulations, Certified Trader!</h3>
+              <p style={{ color: 'rgba(255,255,255,0.75)' }} className="text-sm mb-4">
+                You have completed all stages of the PHILMAC Cebu training program.
+              </p>
+              <div className="flex gap-3 justify-center flex-wrap">
+                <Button asChild size="sm" variant="outline" className="border-white/40 text-white hover:bg-white/15">
+                  <Link to="/student/certificates">View Certificate</Link>
+                </Button>
+                <Button asChild size="sm" variant="outline" className="border-white/40 text-white hover:bg-white/15">
+                  <Link to="/student/awards">View Award</Link>
+                </Button>
+              </div>
             </div>
           </div>
         ) : (
-          <div className="bg-[hsl(218,72%,12%)] rounded-2xl p-5 text-center">
-            <p className="text-white/60 text-sm mb-1">Complete all stages to earn</p>
-            <p className="text-xl font-black text-brand">PHILMAC Cebu Certificate + $500 Award</p>
+          <div
+            className="rounded-2xl p-5 text-center relative overflow-hidden"
+            style={{ background: 'hsl(218,72%,10%)', border: '1px solid hsl(218,72%,20%)' }}
+          >
+            <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 70% 50%, rgba(234,88,12,0.12) 0%, transparent 60%)' }} />
+            <div className="relative">
+              <DollarSign className="w-8 h-8 mx-auto mb-2" style={{ color: 'hsl(18,90%,54%)' }} />
+              <p style={{ color: 'rgba(255,255,255,0.55)' }} className="text-xs font-semibold uppercase tracking-wide mb-1">
+                Complete all stages to earn
+              </p>
+              <p style={{ color: 'hsl(18,90%,54%)', fontSize: 20, fontWeight: 900 }}>
+                PHILMAC Cebu Certificate + $500 Award
+              </p>
+            </div>
           </div>
         )}
       </div>
