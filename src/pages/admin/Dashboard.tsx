@@ -2,8 +2,9 @@ import { useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Users, ClipboardList, CreditCard, TrendingUp, Award, Trophy,
-  CheckCircle, BookOpen, DollarSign, Network
+  CheckCircle, BookOpen, DollarSign, Network, Download, FileText
 } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, BarChart, Bar, AreaChart, Area
@@ -13,6 +14,61 @@ import { useAdminAuth } from '@/hooks/useAuth';
 import { getStudentsStore } from '@/lib/auth';
 import { MOCK_PENDING_REGISTRATIONS } from '@/lib/mockData';
 import type { Student } from '@/types';
+
+// ── CSV Export Helpers ──────────────────────────────────────────────────────
+function downloadCSV(rows: string[], filename: string) {
+  const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportStudentsList(students: Student[]) {
+  const header = '"Name","Email","Mobile","Referral Code","Sponsor Code","Status","Basic %","Next %","Final %","Directs","Level2","Certificate","Award","Registered"';
+  const rows = [header, ...students.map(s => [
+    `"${s.fullName}"`, `"${s.email}"`, `"${s.mobile}"`,
+    `"${s.referralCode}"`, `"${s.sponsorCode || ''}"`,
+    `"${s.status.replace(/_/g, ' ')}"`,
+    `"${s.basicCourseProgress}"`, `"${s.nextCourseProgress}"`, `"${s.finalCourseProgress}"`,
+    `"${s.directReferrals.length}"`, `"${s.secondLevelReferrals?.length ?? 0}"`,
+    `"${s.certificateIssued ? 'Yes' : 'No'}"`, `"${s.awardStatus.replace(/_/g, ' ')}"`,
+    `"${new Date(s.registeredAt).toLocaleDateString('en-PH')}"`,
+  ].join(','))];
+  downloadCSV(rows, 'philmac_students.csv');
+}
+
+function exportMonthlyReport(monthlyData: { month: string; registrations: number; revenue: number; referrals: number }[]) {
+  const header = '"Month","New Registrations","Revenue ($)","Referral Signups"';
+  const rows = [header, ...monthlyData.map(m => `"${m.month}","${m.registrations}","${m.revenue}","${m.referrals}"`)  ];
+  downloadCSV(rows, 'philmac_monthly_report.csv');
+}
+
+function exportRevenueSummary(students: Student[]) {
+  const active = students.filter(s => !['pending', 'payment_review'].includes(s.status));
+  const header = '"Name","Email","Referral Code","Subscription ($)","Award Status","Award ($)","Registered"';
+  const rows = [header, ...active.map(s => [
+    `"${s.fullName}"`, `"${s.email}"`, `"${s.referralCode}"`,
+    `"100"`, `"${s.awardStatus.replace(/_/g, ' ')}"`,
+    `"${s.awardStatus === 'paid' ? 500 : 0}"`,
+    `"${new Date(s.registeredAt).toLocaleDateString('en-PH')}"`,
+  ].join(','))];
+  downloadCSV(rows, 'philmac_revenue_summary.csv');
+}
+
+function exportReferralOverview(students: Student[]) {
+  const header = '"Name","Email","Referral Code","Directs","Level2","Network Total","Has 3 Directs","Full 3x3","Status","Registered"';
+  const rows = [header, ...students.map(s => [
+    `"${s.fullName}"`, `"${s.email}"`, `"${s.referralCode}"`,
+    `"${s.directReferrals.length}"`, `"${s.secondLevelReferrals?.length ?? 0}"`,
+    `"${s.directReferrals.length + (s.secondLevelReferrals?.length ?? 0)}"`,
+    `"${s.directReferrals.length >= 3 ? 'Yes' : 'No'}"`,
+    `"${(s.secondLevelReferrals?.length ?? 0) >= 9 ? 'Yes' : 'No'}"`,
+    `"${s.status.replace(/_/g, ' ')}"`,
+    `"${new Date(s.registeredAt).toLocaleDateString('en-PH')}"`,
+  ].join(','))];
+  downloadCSV(rows, 'philmac_referral_overview.csv');
+}
 
 // ── Chart color tokens ───────────────────────────────────────────────────────
 const NAVY = 'hsl(218,72%,22%)';
@@ -414,6 +470,75 @@ export default function AdminDashboard() {
                 );
               })}
             </div>
+          </div>
+        </div>
+
+        {/* ── Data Export Panel ── */}
+        <div className="bg-white border border-border rounded-2xl overflow-hidden">
+          <div
+            className="px-5 py-4 border-b border-border flex items-center justify-between"
+            style={{ background: 'hsl(210,20%,97.5%)' }}
+          >
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4" style={{ color: 'hsl(18,90%,48%)' }} />
+              <h3 style={{ color: 'hsl(218,72%,12%)' }} className="font-black text-sm">Data Export</h3>
+            </div>
+            <p style={{ color: 'hsl(218,35%,55%)' }} className="text-xs">Download reports as CSV files</p>
+          </div>
+          <div className="p-5 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {[
+              {
+                label: 'Students List',
+                desc: `All ${students.length} student records`,
+                icon: Users,
+                color: '#1e40af',
+                bg: '#dbeafe',
+                onClick: () => { exportStudentsList(students); toast.success('Students list exported'); },
+              },
+              {
+                label: 'Monthly Report',
+                desc: 'Registrations (last 7 months)',
+                icon: TrendingUp,
+                color: '#7c3aed',
+                bg: '#ede9fe',
+                onClick: () => { exportMonthlyReport(monthlyData); toast.success('Monthly report exported'); },
+              },
+              {
+                label: 'Revenue Summary',
+                desc: 'Subscription & award payments',
+                icon: DollarSign,
+                color: '#065f46',
+                bg: '#d1fae5',
+                onClick: () => { exportRevenueSummary(students); toast.success('Revenue summary exported'); },
+              },
+              {
+                label: 'Referral Overview',
+                desc: 'All network & referral data',
+                icon: Network,
+                color: '#92400e',
+                bg: '#fef3c7',
+                onClick: () => { exportReferralOverview(students); toast.success('Referral overview exported'); },
+              },
+            ].map(({ label, desc, icon: Icon, color, bg, onClick }) => (
+              <button
+                key={label}
+                onClick={onClick}
+                className="group flex items-start gap-3 p-4 rounded-xl border transition-all hover:shadow-md hover:-translate-y-0.5 text-left w-full"
+                style={{ borderColor: 'hsl(215,18%,85%)', background: '#ffffff' }}
+              >
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform"
+                  style={{ background: bg }}
+                >
+                  <Icon className="w-4 h-4" style={{ color }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p style={{ color: 'hsl(218,72%,12%)' }} className="text-sm font-bold leading-tight">{label}</p>
+                  <p style={{ color: 'hsl(218,35%,55%)' }} className="text-xs mt-0.5">{desc}</p>
+                </div>
+                <Download className="w-3.5 h-3.5 shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color }} />
+              </button>
+            ))}
           </div>
         </div>
 

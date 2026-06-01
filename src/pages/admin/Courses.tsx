@@ -206,7 +206,8 @@ export default function AdminCourses() {
           </div>
           <Button
             onClick={openAddCourse}
-            className="brand-gradient text-white font-bold gap-1.5"
+            className="gap-1.5 font-bold text-white"
+            style={{ background: 'linear-gradient(135deg, hsl(218,72%,22%), hsl(218,72%,14%))' }}
           >
             <Plus className="w-4 h-4" /> Add Course
           </Button>
@@ -344,7 +345,8 @@ export default function AdminCourses() {
                           setLessonForm({ title: '', duration: '', type: 'video' });
                           setEditingLesson({ courseIdx, lessonId: null });
                         }}
-                        className="gap-1 text-xs brand-gradient text-white font-semibold"
+                        className="gap-1 text-xs font-semibold text-white"
+                        style={{ background: 'linear-gradient(135deg, hsl(218,72%,22%), hsl(218,72%,14%))' }}
                       >
                         <Plus className="w-3.5 h-3.5" /> Add Lesson
                       </Button>
@@ -359,7 +361,8 @@ export default function AdminCourses() {
                           <Button
                             size="sm"
                             onClick={() => addLesson(courseIdx)}
-                            className="brand-gradient text-white font-semibold gap-1"
+                            className="font-semibold text-white gap-1"
+                            style={{ background: 'linear-gradient(135deg, hsl(218,72%,22%), hsl(218,72%,14%))' }}
                           >
                             <Save className="w-3.5 h-3.5" /> Add Lesson
                           </Button>
@@ -391,7 +394,8 @@ export default function AdminCourses() {
                                   <Button
                                     size="sm"
                                     onClick={() => updateLesson(courseIdx, lesson.id)}
-                                    className="brand-gradient text-white font-semibold gap-1"
+                                    className="font-semibold text-white gap-1"
+                                    style={{ background: 'linear-gradient(135deg, hsl(218,72%,22%), hsl(218,72%,14%))' }}
                                   >
                                     <Save className="w-3.5 h-3.5" /> Save
                                   </Button>
@@ -473,7 +477,7 @@ export default function AdminCourses() {
             <BookOpen className="w-12 h-12 mx-auto mb-3" style={{ color: 'hsl(218,35%,70%)' }} />
             <p style={{ color: 'hsl(218,72%,12%)' }} className="font-bold text-base mb-1">No courses yet</p>
             <p style={{ color: 'hsl(218,35%,52%)' }} className="text-sm mb-4">Click "Add Course" to create your first course.</p>
-            <Button onClick={openAddCourse} className="brand-gradient text-white font-bold gap-1.5">
+            <Button onClick={openAddCourse} className="font-bold text-white gap-1.5" style={{ background: 'linear-gradient(135deg, hsl(218,72%,22%), hsl(218,72%,14%))' }}>
               <Plus className="w-4 h-4" /> Add Course
             </Button>
           </div>
@@ -536,7 +540,8 @@ export default function AdminCourses() {
               <div className="flex gap-2 pt-2 border-t border-border">
                 <Button
                   onClick={saveCourseMeta}
-                  className="flex-1 brand-gradient text-white font-bold gap-1.5"
+                  className="flex-1 font-bold text-white gap-1.5"
+                  style={{ background: 'linear-gradient(135deg, hsl(218,72%,22%), hsl(218,72%,14%))' }}
                 >
                   <Save className="w-4 h-4" />
                   {modal.type === 'add-course' ? 'Add Course' : 'Save Changes'}
@@ -583,8 +588,8 @@ export default function AdminCourses() {
                   <Button
                     size="sm"
                     onClick={() => assignCourseToStudent(modal.courseIdx, s.id)}
-                    className="text-xs font-semibold gap-1"
-                    style={{ background: 'hsl(218,72%,18%)', color: '#ffffff' }}
+                    className="text-xs font-semibold gap-1 text-white"
+                    style={{ background: 'linear-gradient(135deg, hsl(218,72%,22%), hsl(218,72%,14%))' }}
                   >
                     <UserCheck className="w-3.5 h-3.5" /> Assign
                   </Button>
